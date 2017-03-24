@@ -17,5 +17,5 @@ object KMeansTestData {
     LabeledVector(1.0000, DenseVector(0,-3))
   )
 
-  val expectedCentroids = Seq(DenseVector(0.5,0.5),DenseVector(0.5,-3.5))
+  val expectedCentroids = Seq(DenseVector(0.5,-3.5),DenseVector(0.5,0.5))
 }
