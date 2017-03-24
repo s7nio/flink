@@ -26,10 +26,9 @@ object KMeans {
   }
 
   // Calculates the centroid of vectors
-  def newCentroid(vectors: Seq[LabeledVector]): DenseVector = {
-    vectors
-      .map(_.vector.asBreeze)
-      .reduce(_ + _).*(1.0 / vectors.length)
+  def newCentroid(v: Seq[LabeledVector]): DenseVector = {
+    v.map(_.vector.asBreeze)
+      .reduce(_ + _).*(1.0 / v.length)
       .fromBreeze.asInstanceOf[DenseVector]
   }
 
@@ -48,47 +47,83 @@ object KMeans {
   }
 
   def withinClusterSumOfSquares(data: Seq[LabeledVector], cs: Seq[LabeledVector]): Double = {
-    val all =for {
-      cluster <- cs
-    } yield {
-      sumOfSquares(data.filter(_.label == cluster.label), cluster)
-    }
-    all.reduce(_ + _)
+    cs
+      .map(c => sumOfSquares(data.filter(_.label == c.label), c))
+      .reduce(_ + _)
   }
-
-  var centroides: Seq[LabeledVector] = Seq()
 
   def fit(data: Seq[LabeledVector]): Unit = {
 
     // first assigment of centroids
-    val vectors = data.slice(0, k_default).map(_.vector)
-    centroides = vectors.zipWithIndex.map(x => LabeledVector(x._2, x._1))
+    val initCentroides = data.slice(0, k_default).map(_.vector).zipWithIndex.map(x => LabeledVector(x._2, x._1))
+    //val initCentroides = Seq(LabeledVector(0.0, DenseVector(-20, 20)), LabeledVector(1.0, DenseVector(10, 10)))
 
-    def assign(cs: Seq[LabeledVector], lv: LabeledVector): LabeledVector = {
+    def assignVectorToCentroids(cs: Seq[LabeledVector], lv: LabeledVector): LabeledVector = {
       LabeledVector(findNearestCentroid(cs, lv.vector), lv.vector)
     }
 
-    def update(data: Seq[LabeledVector]): Seq[LabeledVector] = {
-      val newCentroids = data.groupBy(_.label).map(k => newCentroid(k._2))
-
+    def updatedCentroids(d: Seq[LabeledVector]): Seq[LabeledVector] = {
+      val newCentroids = d.groupBy(_.label).map(k => newCentroid(k._2))
       newCentroids.zipWithIndex.map(x => LabeledVector(x._2, x._1)).toSeq
     }
 
+    //    centroids = initCentroides
+    //    var newData = data
+    //    for (n <- 0 to 1000) {
+    //      newData = data.map(assignVectorToCentroids(centroids, _))
+    //      centroids = updatedCentroids(newData)
+    //      println(centroids)
+    //    }
 
-    for (n <- 0 to 10) {
-      // assign
-      data.map(assign(centroides, _))
 
-      // update
-      centroides = update(data)
+    //    val maxSteps = 10
+    //
+    //    def finalResult(initialCentroides: Seq[LabeledVector], ds: Seq[LabeledVector]): (Seq[LabeledVector], Seq[LabeledVector]) =
+    //      (0 to maxSteps).foldRight((initialCentroides, ds))((n, agg) => {
+    //
+    //        val currentData = agg._2
+    //        val currentCentroids = agg._1
+    //        val newData = currentData.map(assignVectorToCentroids(currentCentroids, _))
+    //        val newCentroids = updatedCentroids(newData)
+    //        println(newCentroids)
+    //
+    //        (newCentroids, newData)
+    //      })
+    //
+    //    val result = finalResult(initCentroides, data)
+    //    centroids = result._1
+    //    println(centroids)
+
+
+    def finalResult(dataset: Seq[LabeledVector], centroids: Seq[LabeledVector], WCSS: Double): (Seq[LabeledVector], Seq[LabeledVector]) = {
+
+      val currentWCSS: Double = withinClusterSumOfSquares(dataset, centroids)
+
+      if (math.abs(WCSS - currentWCSS) > 0.001) {
+        val newData = dataset.map(assignVectorToCentroids(centroids, _))
+        val newCentroids = updatedCentroids(newData)
+        println(newCentroids)
+        println(WCSS, currentWCSS)
+        finalResult(newData, newCentroids, currentWCSS)
+      } else {
+        println(centroids)
+        println(WCSS, currentWCSS)
+        (dataset, centroids)
+      }
+
     }
 
-
+    val result = finalResult(data, initCentroides, 100.0)
+    centroids = result._2
+    println(centroids)
 
 
   }
 
+  var centroids: Seq[LabeledVector] = Seq()
+
+
   def predict(v: DenseVector): Int = {
-    findNearestCentroid(centroides, v)
+    findNearestCentroid(centroids, v)
   }
 }

@@ -20,12 +20,11 @@ class KMeansSuite extends FlatSpec with Matchers with FlinkTestBase {
 
     KMeans.fit(KMeansTestData.trainingData)
 
-
-    KMeans.centroides.zip(KMeansTestData.expectedCentroids).foreach {
+    KMeans.centroids.zip(KMeansTestData.expectedCentroids).foreach {
       case (c, expectedC) =>
         c.vector.valueIterator.zip(expectedC.valueIterator).foreach {
           case (v, expectedV) =>
-            v should be(expectedV +- 1)
+            v should be(expectedV +- 0.1)
             // TODO: reihenfolge der centroids sollte egal sein
         }
 
